@@ -415,16 +415,30 @@ async function submitRatings(){
 
 // ---------- INIT ----------
 (async function init(){
+  const urlParams = new URLSearchParams(window.location.search);
+  const forcedRole = urlParams.get('role'); // 'student' locks the page to the student view
+
   if(!apiConfigured()){
     document.querySelector('.role-tabs').style.display = 'none';
     teacherView.innerHTML = `<div class="card"><div class="warn"><strong>Setup needed:</strong> open index.html, find the line starting with <code>const API_URL</code>, and paste in your deployed Google Apps Script Web App URL. See the README for the full walkthrough.</div></div>`;
     return;
   }
+
+  if(forcedRole === 'student' || forcedRole === 'teacher'){
+    document.querySelector('.role-tabs').style.display = 'none';
+  }
+
   document.getElementById('statusLine').textContent = 'Loading…';
   try{
     await loadConfig();
     document.getElementById('statusLine').textContent = '';
-    renderTeacher();
+    if(forcedRole === 'student'){
+      teacherView.style.display = 'none';
+      studentView.style.display = '';
+      renderStudent();
+    }else{
+      renderTeacher();
+    }
   }catch(e){
     document.getElementById('statusLine').textContent = '';
     teacherView.innerHTML = `<div class="card"><div class="warn">Could not reach the backend. Double check the API_URL is correct and the Apps Script is deployed with access set to "Anyone".</div></div>`;
