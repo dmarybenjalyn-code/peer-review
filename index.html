@@ -79,7 +79,7 @@
 
 <script>
 // ======= EDIT THIS ONE LINE AFTER YOU DEPLOY THE APPS SCRIPT =======
-const API_URL = "https://script.google.com/macros/s/AKfycbxCInbxkFdwOQDBNVgo0qCW-PHKfyDyWWatleaLM6rIDcRU6j8MwuFa-iVUZ4dPC7hybA/exec";
+const API_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
 // ====================================================================
 
 let CONFIG = null;
@@ -257,7 +257,7 @@ async function renderResults(){
   if(!group){ el.innerHTML=''; return; }
   el.innerHTML = '<p class="muted">Loading…</p>';
   const allRatings = await getRatingsForGroup(group.name);
-  const expectedRaters = group.members.length - 1;
+  const expectedRaters = group.members.length; // includes each member's self-rating
 
   const rows = group.members.map(member => {
     const critSums = {};
@@ -352,12 +352,13 @@ async function renderRatingForm(){
   area.innerHTML = '<p class="muted">Loading…</p>';
   const group = CONFIG.groups.find(g => g.name === studentState.group);
   const peers = group.members.filter(m => m !== studentState.name);
+  const targets = [studentState.name, ...peers]; // rate yourself first, then teammates
 
   const allRatings = await getRatingsForGroup(group.name);
   const existing = allRatings.find(r => r.rater === studentState.name) || null;
 
   studentState.scores = {};
-  peers.forEach(p => {
+  targets.forEach(p => {
     studentState.scores[p] = {};
     CONFIG.criteria.forEach(c => { studentState.scores[p][c.id] = (existing && existing.targets[p]) ? existing.targets[p][c.id] : null; });
   });
@@ -365,11 +366,11 @@ async function renderRatingForm(){
   area.innerHTML = `
     ${existing ? '<div class="notice">You already submitted ratings for this group. Submitting again will update them.</div>' : ''}
     <div class="card">
-      <h2>Rate your teammates</h2>
-      <p class="muted">0 is lowest, ${CONFIG.scaleMax} is highest. Rate everyone except yourself.</p>
-      ${peers.map(p => `
+      <h2>Rate yourself, then your teammates</h2>
+      <p class="muted">0 is lowest, ${CONFIG.scaleMax} is highest. Start with your own self-assessment.</p>
+      ${targets.map((p, i) => `
         <div class="target-block">
-          <h3>${p}</h3>
+          <h3>${i === 0 ? p + ' (yourself)' : p}</h3>
           <div class="scale-grid">
             ${CONFIG.criteria.map(c => `
               <div class="scale-item">
@@ -400,9 +401,14 @@ async function renderRatingForm(){
 async function submitRatings(){
   const group = CONFIG.groups.find(g => g.name === studentState.group);
   const peers = group.members.filter(m => m !== studentState.name);
-  for(const p of peers){
+  const targets = [studentState.name, ...peers];
+  for(const p of targets){
     for(const c of CONFIG.criteria){
-      if(studentState.scores[p][c.id] === null){ alert(`Please rate ${p} on all categories before submitting.`); return; }
+      if(studentState.scores[p][c.id] === null){
+        const who = p === studentState.name ? 'yourself' : p;
+        alert(`Please rate ${who} on all categories before submitting.`);
+        return;
+      }
     }
   }
   try{
