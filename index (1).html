@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peer Review</title>
+<style>
+  :root{
+    --ink:#1c2a3a; --ink-soft:#4a5a6c; --paper:#eef1f6; --card:#ffffff; --line:#d7dee7;
+    --gold:#c98a2b; --gold-dark:#a86f1c; --sage:#3f7a5f; --sage-soft:#e6f0ea;
+    --rose:#b5484a; --rose-soft:#f7e8e8; --radius-lg:14px; --radius-sm:8px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.45;}
+  h1,h2,h3{font-family:Georgia,"Times New Roman",serif;font-weight:600;margin:0 0 4px 0;color:var(--ink);}
+  .wrap{max-width:760px;margin:0 auto;padding:28px 20px 60px;}
+  header.top{display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:22px;}
+  header.top h1{font-size:1.5rem;}
+  header.top span{font-size:0.85rem;color:var(--ink-soft);}
+  .role-tabs{display:flex;gap:6px;margin-bottom:22px;}
+  .role-tabs button{flex:1;padding:11px 14px;border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--card);font-size:0.95rem;cursor:pointer;color:var(--ink-soft);}
+  .role-tabs button.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius-lg);padding:22px;margin-bottom:18px;}
+  label{display:block;font-size:0.85rem;color:var(--ink-soft);margin-bottom:5px;margin-top:14px;}
+  label:first-child{margin-top:0;}
+  input[type=text], input[type=number], select, textarea{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:0.95rem;font-family:inherit;background:#fbfcfd;color:var(--ink);}
+  .row{display:flex;gap:10px;align-items:flex-end;}
+  .row > *{flex:1;}
+  .btn{display:inline-block;padding:10px 18px;border-radius:var(--radius-sm);border:none;font-size:0.95rem;cursor:pointer;font-weight:600;}
+  .btn-primary{background:var(--gold);color:#fff;}
+  .btn-primary:hover{background:var(--gold-dark);}
+  .btn-quiet{background:transparent;color:var(--ink-soft);border:1px solid var(--line);}
+  .btn-quiet:hover{background:var(--paper);}
+  .btn-danger{background:var(--rose-soft);color:var(--rose);}
+  .btn-sm{padding:6px 10px;font-size:0.82rem;}
+  .btn-block{width:100%;}
+  .group-row{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);}
+  .group-row:last-child{border-bottom:none;}
+  .group-row .tag{background:var(--paper);padding:2px 9px;border-radius:20px;font-size:0.78rem;color:var(--ink-soft);}
+  .crit-row{display:flex;align-items:center;gap:8px;padding:6px 0;}
+  .crit-row input{flex:1;}
+  .muted{color:var(--ink-soft);font-size:0.85rem;}
+  .divider{height:1px;background:var(--line);margin:18px 0;}
+  .scale-grid{display:grid;grid-template-columns:1fr;gap:18px;margin-top:10px;}
+  .scale-item{border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px 14px;background:#fbfcfd;}
+  .scale-item .qlabel{font-size:0.92rem;margin-bottom:10px;color:var(--ink);}
+  .scale-buttons{display:flex;gap:6px;flex-wrap:wrap;}
+  .scale-buttons button{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:#fff;font-weight:600;cursor:pointer;color:var(--ink-soft);font-size:0.9rem;}
+  .scale-buttons button.picked{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .target-block{border-top:2px solid var(--ink);padding-top:14px;margin-top:22px;}
+  .target-block:first-of-type{margin-top:0;}
+  .target-block h3{font-size:1.05rem;}
+  table.summary{width:100%;border-collapse:collapse;font-size:0.88rem;}
+  table.summary th, table.summary td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;}
+  table.summary th{color:var(--ink-soft);font-weight:600;font-size:0.78rem;}
+  table.summary td.num, table.summary th.num{text-align:center;}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:0.75rem;font-weight:600;}
+  .pill.ok{background:var(--sage-soft);color:var(--sage);}
+  .pill.low{background:var(--rose-soft);color:var(--rose);}
+  .empty{text-align:center;padding:30px 10px;color:var(--ink-soft);}
+  .notice{background:var(--sage-soft);color:var(--sage);padding:10px 14px;border-radius:var(--radius-sm);font-size:0.88rem;margin-bottom:14px;}
+  .warn{background:var(--rose-soft);color:var(--rose);padding:14px;border-radius:var(--radius-sm);font-size:0.9rem;}
+  .flex-between{display:flex;justify-content:space-between;align-items:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Peer Review</h1>
+    <span id="statusLine"></span>
+  </header>
+  <div class="role-tabs">
+    <button id="tabTeacher" class="active">Teacher</button>
+    <button id="tabStudent">Student</button>
+  </div>
+  <div id="teacherView"></div>
+  <div id="studentView" style="display:none;"></div>
+</div>
+
+<script>
+// ======= EDIT THIS ONE LINE AFTER YOU DEPLOY THE APPS SCRIPT =======
+const API_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+// ====================================================================
+
+let CONFIG = null;
+
+async function apiGet(action, params){
+  params = params || {};
+  const qs = new URLSearchParams(Object.assign({action}, params));
+  const res = await fetch(API_URL + '?' + qs.toString());
+  return res.json();
+}
+async function apiPost(action, payload){
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'text/plain;charset=utf-8'}, // avoids a CORS preflight Apps Script can't handle
+    body: JSON.stringify(Object.assign({action}, payload))
+  });
+  return res.json();
+}
+
+async function loadConfig(){
+  CONFIG = await apiGet('config');
+}
+async function saveConfig(){
+  try{
+    await apiPost('saveConfig', {config: CONFIG});
+    return true;
+  }catch(e){
+    alert('Could not save settings. Please try again.');
+    return false;
+  }
+}
+async function getRatingsForGroup(groupName){
+  try{
+    return await apiGet('results', {group: groupName});
+  }catch(e){ return []; }
+}
+
+// ---------- SETUP CHECK ----------
+function apiConfigured(){
+  return API_URL && !API_URL.includes('PASTE_YOUR');
+}
+
+// ---------- ROLE TABS ----------
+const tabTeacher = document.getElementById('tabTeacher');
+const tabStudent = document.getElementById('tabStudent');
+const teacherView = document.getElementById('teacherView');
+const studentView = document.getElementById('studentView');
+
+tabTeacher.addEventListener('click', () => {
+  tabTeacher.classList.add('active'); tabStudent.classList.remove('active');
+  teacherView.style.display = ''; studentView.style.display = 'none';
+  renderTeacher();
+});
+tabStudent.addEventListener('click', () => {
+  tabStudent.classList.add('active'); tabTeacher.classList.remove('active');
+  studentView.style.display = ''; teacherView.style.display = 'none';
+  renderStudent();
+});
+
+// ---------- TEACHER VIEW ----------
+let teacherSelectedGroup = null;
+
+function renderTeacher(){
+  const g = CONFIG.groups;
+  teacherView.innerHTML = `
+    <div class="card">
+      <h2>Groups</h2>
+      <p class="muted">Add each group and list its members separated by commas.</p>
+      <div id="groupList"></div>
+      <div class="divider"></div>
+      <div class="row">
+        <div><label>Group name</label><input type="text" id="newGroupName" placeholder="e.g. Group 1"></div>
+        <div><label>Members (comma-separated)</label><input type="text" id="newGroupMembers" placeholder="e.g. Alex, Bao, Cora, Diego, Emi"></div>
+        <div style="flex:0;"><button class="btn btn-primary" id="addGroupBtn">Add</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Rating criteria</h2>
+      <p class="muted">Scale runs 0 to the max you set below. Edit labels to match your rubric.</p>
+      <label>Highest possible score</label>
+      <input type="number" id="scaleMax" min="1" max="10" value="${CONFIG.scaleMax}" style="max-width:100px;">
+      <div id="critList" style="margin-top:14px;"></div>
+      <button class="btn btn-quiet btn-sm" id="addCritBtn" style="margin-top:8px;">+ Add criterion</button>
+      <div class="divider"></div>
+      <button class="btn btn-primary" id="saveSettingsBtn">Save settings</button>
+      <span id="saveMsg" class="muted" style="margin-left:10px;"></span>
+    </div>
+    <div class="card">
+      <div class="flex-between">
+        <h2>Results</h2>
+        <div><button class="btn btn-quiet btn-sm" id="refreshBtn">Refresh</button><button class="btn btn-quiet btn-sm" id="exportBtn">Export CSV</button></div>
+      </div>
+      <label>View group</label>
+      <select id="resultsGroupSelect"></select>
+      <div id="resultsTable" style="margin-top:16px;"></div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:0.95rem;">Reset</h3>
+      <p class="muted">Clears all groups, criteria, and submitted ratings in the Google Sheet. Do this at the start of a new project, not mid-cycle.</p>
+      <button class="btn btn-danger btn-sm" id="resetBtn">Clear all data</button>
+    </div>
+  `;
+  renderGroupList();
+  renderCritList();
+  document.getElementById('addGroupBtn').onclick = onAddGroup;
+  document.getElementById('addCritBtn').onclick = onAddCrit;
+  document.getElementById('saveSettingsBtn').onclick = onSaveSettings;
+  document.getElementById('resetBtn').onclick = onReset;
+  document.getElementById('refreshBtn').onclick = () => renderResults();
+  document.getElementById('exportBtn').onclick = onExportCsv;
+
+  const sel = document.getElementById('resultsGroupSelect');
+  sel.innerHTML = g.map(gr => `<option value="${gr.name}">${gr.name}</option>`).join('') || '<option value="">No groups yet</option>';
+  if(!teacherSelectedGroup && g.length) teacherSelectedGroup = g[0].name;
+  sel.value = teacherSelectedGroup || '';
+  sel.onchange = () => { teacherSelectedGroup = sel.value; renderResults(); };
+  renderResults();
+}
+
+function renderGroupList(){
+  const el = document.getElementById('groupList');
+  if(!CONFIG.groups.length){ el.innerHTML = '<p class="muted">No groups added yet.</p>'; return; }
+  el.innerHTML = CONFIG.groups.map((gr, i) => `
+    <div class="group-row">
+      <strong style="min-width:120px;">${gr.name}</strong>
+      <div style="flex:1;">${gr.members.map(m => `<span class="tag">${m}</span>`).join(' ')}</div>
+      <button class="btn btn-quiet btn-sm" data-idx="${i}">Remove</button>
+    </div>`).join('');
+  el.querySelectorAll('button[data-idx]').forEach(btn => {
+    btn.onclick = async () => { CONFIG.groups.splice(parseInt(btn.dataset.idx), 1); await saveConfig(); renderTeacher(); };
+  });
+}
+
+function onAddGroup(){
+  const name = document.getElementById('newGroupName').value.trim();
+  const members = document.getElementById('newGroupMembers').value.split(',').map(s => s.trim()).filter(Boolean);
+  if(!name || members.length < 2){ alert('Give the group a name and at least 2 members.'); return; }
+  CONFIG.groups.push({name, members});
+  saveConfig();
+  renderTeacher();
+}
+
+function renderCritList(){
+  const el = document.getElementById('critList');
+  el.innerHTML = CONFIG.criteria.map((c, i) => `
+    <div class="crit-row">
+      <input type="text" data-idx="${i}" class="critInput" value="${c.label.replace(/"/g,'&quot;')}">
+      <button class="btn btn-quiet btn-sm" data-remove="${i}">✕</button>
+    </div>`).join('');
+  el.querySelectorAll('.critInput').forEach(inp => { inp.oninput = () => { CONFIG.criteria[parseInt(inp.dataset.idx)].label = inp.value; }; });
+  el.querySelectorAll('button[data-remove]').forEach(btn => { btn.onclick = () => { CONFIG.criteria.splice(parseInt(btn.dataset.remove), 1); renderCritList(); }; });
+}
+
+function onAddCrit(){ CONFIG.criteria.push({id:'c'+Date.now(), label:'New criterion'}); renderCritList(); }
+
+async function onSaveSettings(){
+  CONFIG.scaleMax = parseInt(document.getElementById('scaleMax').value) || 5;
+  const ok = await saveConfig();
+  const msg = document.getElementById('saveMsg');
+  msg.textContent = ok ? 'Saved.' : '';
+  if(ok) setTimeout(() => { msg.textContent=''; }, 2000);
+}
+
+async function onReset(){
+  if(!confirm('This clears all groups, criteria, and submitted ratings in the Google Sheet. Continue?')) return;
+  await apiPost('reset', {});
+  await loadConfig();
+  renderTeacher();
+}
+
+async function renderResults(){
+  const el = document.getElementById('resultsTable');
+  if(!teacherSelectedGroup){ el.innerHTML = '<div class="empty">Add a group above to see results here.</div>'; return; }
+  const group = CONFIG.groups.find(g => g.name === teacherSelectedGroup);
+  if(!group){ el.innerHTML=''; return; }
+  el.innerHTML = '<p class="muted">Loading…</p>';
+  const allRatings = await getRatingsForGroup(group.name);
+  const expectedRaters = group.members.length - 1;
+
+  const rows = group.members.map(member => {
+    const critSums = {};
+    CONFIG.criteria.forEach(c => critSums[c.id] = {sum:0, n:0});
+    let raterCount = 0;
+    allRatings.forEach(entry => {
+      const t = entry.targets && entry.targets[member];
+      if(t){
+        raterCount++;
+        CONFIG.criteria.forEach(c => { if(typeof t[c.id] === 'number'){ critSums[c.id].sum += t[c.id]; critSums[c.id].n += 1; } });
+      }
+    });
+    const critAvgs = CONFIG.criteria.map(c => critSums[c.id].n ? (critSums[c.id].sum / critSums[c.id].n) : null);
+    const validAvgs = critAvgs.filter(v => v !== null);
+    const overall = validAvgs.length ? (validAvgs.reduce((a,b)=>a+b,0)/validAvgs.length) : null;
+    return {member, critAvgs, overall, raterCount};
+  });
+
+  const tableHead = `<tr><th>Member</th>${CONFIG.criteria.map(c => `<th class="num" title="${c.label}">${c.label.length>16?c.label.slice(0,14)+'…':c.label}</th>`).join('')}<th class="num">Overall</th><th class="num">Responses</th></tr>`;
+  const tableBody = rows.map(r => `
+    <tr>
+      <td>${r.member}</td>
+      ${r.critAvgs.map(v => `<td class="num">${v===null?'—':v.toFixed(2)}</td>`).join('')}
+      <td class="num"><strong>${r.overall===null?'—':r.overall.toFixed(2)}</strong></td>
+      <td class="num"><span class="pill ${r.raterCount>=expectedRaters ? 'ok':'low'}">${r.raterCount}/${expectedRaters}</span></td>
+    </tr>`).join('');
+  el.innerHTML = `<table class="summary"><thead>${tableHead}</thead><tbody>${tableBody}</tbody></table>`;
+}
+
+async function onExportCsv(){
+  if(!teacherSelectedGroup) return;
+  const group = CONFIG.groups.find(g => g.name === teacherSelectedGroup);
+  const allRatings = await getRatingsForGroup(group.name);
+  const header = ['Member', ...CONFIG.criteria.map(c=>c.label), 'Overall', 'Responses'];
+  const lines = [header];
+  group.members.forEach(member => {
+    const critSums = {};
+    CONFIG.criteria.forEach(c => critSums[c.id] = {sum:0,n:0});
+    let raterCount = 0;
+    allRatings.forEach(entry => {
+      const t = entry.targets && entry.targets[member];
+      if(t){ raterCount++; CONFIG.criteria.forEach(c => { if(typeof t[c.id] === 'number'){ critSums[c.id].sum += t[c.id]; critSums[c.id].n += 1; } }); }
+    });
+    const critAvgs = CONFIG.criteria.map(c => critSums[c.id].n ? (critSums[c.id].sum/critSums[c.id].n).toFixed(2) : '');
+    const valid = critAvgs.filter(v=>v!=='').map(Number);
+    const overall = valid.length ? (valid.reduce((a,b)=>a+b,0)/valid.length).toFixed(2) : '';
+    lines.push([member, ...critAvgs, overall, raterCount]);
+  });
+  const csv = lines.map(row => row.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = group.name.replace(/[^a-z0-9]/gi,'_') + '_peer_review.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ---------- STUDENT VIEW ----------
+let studentState = { group:null, name:null, scores:{} };
+
+function renderStudent(){
+  if(!CONFIG.groups.length){
+    studentView.innerHTML = '<div class="card"><p class="empty">Your teacher hasn\'t set up any groups yet. Check back soon.</p></div>';
+    return;
+  }
+  studentView.innerHTML = `
+    <div class="card">
+      <h2>Who are you rating for?</h2>
+      <label>Your group</label>
+      <select id="studentGroupSelect"><option value="">Choose a group…</option>${CONFIG.groups.map(g => `<option value="${g.name}">${g.name}</option>`).join('')}</select>
+      <label>Your name</label>
+      <select id="studentNameSelect" disabled><option value="">Choose your group first…</option></select>
+    </div>
+    <div id="ratingFormArea"></div>
+  `;
+  const groupSel = document.getElementById('studentGroupSelect');
+  const nameSel = document.getElementById('studentNameSelect');
+  groupSel.onchange = () => {
+    const group = CONFIG.groups.find(g => g.name === groupSel.value);
+    if(group){ nameSel.disabled = false; nameSel.innerHTML = '<option value="">Choose your name…</option>' + group.members.map(m => `<option value="${m}">${m}</option>`).join(''); }
+    else{ nameSel.disabled = true; nameSel.innerHTML = '<option value="">Choose your group first…</option>'; }
+    document.getElementById('ratingFormArea').innerHTML = '';
+  };
+  nameSel.onchange = async () => {
+    if(!nameSel.value){ document.getElementById('ratingFormArea').innerHTML=''; return; }
+    studentState.group = groupSel.value; studentState.name = nameSel.value;
+    await renderRatingForm();
+  };
+}
+
+async function renderRatingForm(){
+  const area = document.getElementById('ratingFormArea');
+  area.innerHTML = '<p class="muted">Loading…</p>';
+  const group = CONFIG.groups.find(g => g.name === studentState.group);
+  const peers = group.members.filter(m => m !== studentState.name);
+
+  const allRatings = await getRatingsForGroup(group.name);
+  const existing = allRatings.find(r => r.rater === studentState.name) || null;
+
+  studentState.scores = {};
+  peers.forEach(p => {
+    studentState.scores[p] = {};
+    CONFIG.criteria.forEach(c => { studentState.scores[p][c.id] = (existing && existing.targets[p]) ? existing.targets[p][c.id] : null; });
+  });
+
+  area.innerHTML = `
+    ${existing ? '<div class="notice">You already submitted ratings for this group. Submitting again will update them.</div>' : ''}
+    <div class="card">
+      <h2>Rate your teammates</h2>
+      <p class="muted">0 is lowest, ${CONFIG.scaleMax} is highest. Rate everyone except yourself.</p>
+      ${peers.map(p => `
+        <div class="target-block">
+          <h3>${p}</h3>
+          <div class="scale-grid">
+            ${CONFIG.criteria.map(c => `
+              <div class="scale-item">
+                <div class="qlabel">${c.label}</div>
+                <div class="scale-buttons" data-peer="${p}" data-crit="${c.id}">
+                  ${Array.from({length: CONFIG.scaleMax+1}, (_,i) => CONFIG.scaleMax - i).map(v => `<button type="button" data-val="${v}" class="${studentState.scores[p][c.id]===v?'picked':''}">${v}</button>`).join('')}
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>`).join('')}
+      <div class="divider"></div>
+      <button class="btn btn-primary btn-block" id="submitRatingsBtn">${existing ? 'Update ratings' : 'Submit ratings'}</button>
+      <p id="submitMsg" class="muted" style="text-align:center;margin-top:10px;"></p>
+    </div>
+  `;
+  area.querySelectorAll('.scale-buttons').forEach(group_el => {
+    group_el.querySelectorAll('button').forEach(btn => {
+      btn.onclick = () => {
+        const peer = group_el.dataset.peer, crit = group_el.dataset.crit;
+        studentState.scores[peer][crit] = parseInt(btn.dataset.val);
+        group_el.querySelectorAll('button').forEach(b => b.classList.toggle('picked', b === btn));
+      };
+    });
+  });
+  document.getElementById('submitRatingsBtn').onclick = submitRatings;
+}
+
+async function submitRatings(){
+  const group = CONFIG.groups.find(g => g.name === studentState.group);
+  const peers = group.members.filter(m => m !== studentState.name);
+  for(const p of peers){
+    for(const c of CONFIG.criteria){
+      if(studentState.scores[p][c.id] === null){ alert(`Please rate ${p} on all categories before submitting.`); return; }
+    }
+  }
+  try{
+    await apiPost('submitRating', {group: group.name, rater: studentState.name, targets: studentState.scores});
+    document.getElementById('submitMsg').textContent = 'Submitted. Thank you!';
+  }catch(e){
+    document.getElementById('submitMsg').textContent = 'Something went wrong — please try again.';
+  }
+}
+
+// ---------- INIT ----------
+(async function init(){
+  if(!apiConfigured()){
+    document.querySelector('.role-tabs').style.display = 'none';
+    teacherView.innerHTML = `<div class="card"><div class="warn"><strong>Setup needed:</strong> open index.html, find the line starting with <code>const API_URL</code>, and paste in your deployed Google Apps Script Web App URL. See the README for the full walkthrough.</div></div>`;
+    return;
+  }
+  document.getElementById('statusLine').textContent = 'Loading…';
+  try{
+    await loadConfig();
+    document.getElementById('statusLine').textContent = '';
+    renderTeacher();
+  }catch(e){
+    document.getElementById('statusLine').textContent = '';
+    teacherView.innerHTML = `<div class="card"><div class="warn">Could not reach the backend. Double check the API_URL is correct and the Apps Script is deployed with access set to "Anyone".</div></div>`;
+  }
+})();
+</script>
+</body>
+</html>
