@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Peer Review</title>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
     --ink:#1c2a3a; --ink-soft:#4a5a6c; --paper:#eef1f6; --card:#ffffff; --line:#d7dee7;
@@ -62,9 +61,6 @@
   .notice{background:var(--sage-soft);color:var(--sage);padding:10px 14px;border-radius:var(--radius-sm);font-size:0.88rem;margin-bottom:14px;}
   .warn{background:var(--rose-soft);color:var(--rose);padding:14px;border-radius:var(--radius-sm);font-size:0.9rem;}
   .flex-between{display:flex;justify-content:space-between;align-items:center;}
-  #gSignInBtn{margin-top:10px;}
-  .signed-in-bar{display:flex;align-items:center;justify-content:space-between;background:var(--sage-soft);color:var(--sage);padding:10px 14px;border-radius:var(--radius-sm);font-size:0.88rem;margin-bottom:14px;}
-  .signed-in-bar a{color:var(--sage);text-decoration:underline;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -82,11 +78,9 @@
 </div>
 
 <script>
-// ======= EDIT THESE AFTER SETUP (see README) =======
+// ======= EDIT THIS ONE LINE AFTER YOU DEPLOY THE APPS SCRIPT =======
 const API_URL = "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
-const GOOGLE_CLIENT_ID = "PASTE_YOUR_GOOGLE_OAUTH_CLIENT_ID_HERE"; // ends in .apps.googleusercontent.com
-const ALLOWED_DOMAIN = "adi.edu.ph";
-// =====================================================
+// ====================================================================
 
 let CONFIG = null;
 
@@ -116,16 +110,7 @@ async function getRatingsForGroup(groupName){
 }
 
 function apiConfigured(){
-  return API_URL && !API_URL.includes('PASTE_YOUR') && GOOGLE_CLIENT_ID && !GOOGLE_CLIENT_ID.includes('PASTE_YOUR');
-}
-
-// Parses "Name (email@domain), Name (email@domain)" into [{name, email}, ...]
-function parseMembers(str){
-  return str.split(',').map(s => s.trim()).filter(Boolean).map(token => {
-    const m = token.match(/^(.*?)\(([^()]+)\)\s*$/);
-    if(m) return { name: m[1].trim(), email: m[2].trim().toLowerCase() };
-    return { name: token, email: '' };
-  });
+  return API_URL && !API_URL.includes('PASTE_YOUR');
 }
 
 // ---------- ROLE TABS ----------
@@ -153,12 +138,12 @@ function renderTeacher(){
   teacherView.innerHTML = `
     <div class="card">
       <h2>Groups</h2>
-      <p class="muted">Add each group's members as <strong>Name (email)</strong> pairs, separated by commas — the email is what signs them in, so it must match their real ${ALLOWED_DOMAIN} address.</p>
+      <p class="muted">Add each group and list its members separated by commas.</p>
       <div id="groupList"></div>
       <div class="divider"></div>
       <div class="row">
         <div><label>Group name</label><input type="text" id="newGroupName" placeholder="e.g. Group 1"></div>
-        <div><label>Members</label><input type="text" id="newGroupMembers" placeholder="Ana Cruz (ana.cruz@${ALLOWED_DOMAIN}), Ben Reyes (ben.reyes@${ALLOWED_DOMAIN})"></div>
+        <div><label>Members (comma-separated)</label><input type="text" id="newGroupMembers" placeholder="e.g. Alex, Bao, Cora, Diego, Emi"></div>
         <div style="flex:0;"><button class="btn btn-primary" id="addGroupBtn">Add</button></div>
       </div>
     </div>
@@ -212,7 +197,7 @@ function renderGroupList(){
   el.innerHTML = CONFIG.groups.map((gr, i) => `
     <div class="group-row">
       <strong style="min-width:120px;">${gr.name}</strong>
-      <div style="flex:1;">${gr.members.map(m => `<span class="tag">${m.name}${m.email ? ' — '+m.email : ' (no email!)'}</span>`).join(' ')}</div>
+      <div style="flex:1;">${gr.members.map(m => `<span class="tag">${m}</span>`).join(' ')}</div>
       <button class="btn btn-quiet btn-sm" data-idx="${i}">Remove</button>
     </div>`).join('');
   el.querySelectorAll('button[data-idx]').forEach(btn => {
@@ -222,13 +207,8 @@ function renderGroupList(){
 
 function onAddGroup(){
   const name = document.getElementById('newGroupName').value.trim();
-  const members = parseMembers(document.getElementById('newGroupMembers').value);
+  const members = document.getElementById('newGroupMembers').value.split(',').map(s => s.trim()).filter(Boolean);
   if(!name || members.length < 2){ alert('Give the group a name and at least 2 members.'); return; }
-  const missingEmail = members.filter(m => !m.email);
-  if(missingEmail.length){
-    alert('These members are missing an email in parentheses, so they won\'t be able to sign in: ' + missingEmail.map(m=>m.name).join(', ') + '\n\nFormat: Name (email@' + ALLOWED_DOMAIN + ')');
-    return;
-  }
   CONFIG.groups.push({name, members});
   saveConfig();
   renderTeacher();
@@ -276,7 +256,7 @@ async function renderResults(){
     CONFIG.criteria.forEach(c => critSums[c.id] = {sum:0, n:0});
     let raterCount = 0;
     allRatings.forEach(entry => {
-      const t = entry.targets && entry.targets[member.name];
+      const t = entry.targets && entry.targets[member];
       if(t){
         raterCount++;
         CONFIG.criteria.forEach(c => { if(typeof t[c.id] === 'number'){ critSums[c.id].sum += t[c.id]; critSums[c.id].n += 1; } });
@@ -285,7 +265,7 @@ async function renderResults(){
     const critAvgs = CONFIG.criteria.map(c => critSums[c.id].n ? (critSums[c.id].sum / critSums[c.id].n) : null);
     const validAvgs = critAvgs.filter(v => v !== null);
     const overall = validAvgs.length ? (validAvgs.reduce((a,b)=>a+b,0)/validAvgs.length) : null;
-    return {member: member.name, critAvgs, overall, raterCount};
+    return {member, critAvgs, overall, raterCount};
   });
 
   const tableHead = `<tr><th>Member</th>${CONFIG.criteria.map(c => `<th class="num" title="${c.label}">${c.label.length>16?c.label.slice(0,14)+'…':c.label}</th>`).join('')}<th class="num">Overall</th><th class="num">Responses</th></tr>`;
@@ -298,7 +278,7 @@ async function renderResults(){
     </tr>`).join('');
 
   const submittedNames = new Set(allRatings.map(r => r.rater));
-  const submittedCount = group.members.filter(m => submittedNames.has(m.name)).length;
+  const submittedCount = group.members.filter(m => submittedNames.has(m)).length;
   const statusHtml = `
     <div style="margin-bottom:18px;">
       <div class="flex-between" style="margin-bottom:8px;">
@@ -307,8 +287,8 @@ async function renderResults(){
       </div>
       <div>
         ${group.members.map(m => `
-          <span class="pill ${submittedNames.has(m.name) ? 'ok' : 'low'}" style="margin-right:6px;margin-bottom:6px;display:inline-block;">
-            ${m.name} ${submittedNames.has(m.name) ? '✓' : '— not yet'}
+          <span class="pill ${submittedNames.has(m) ? 'ok' : 'low'}" style="margin-right:6px;margin-bottom:6px;display:inline-block;">
+            ${m} ${submittedNames.has(m) ? '✓' : '— not yet'}
           </span>`).join('')}
       </div>
     </div>
@@ -326,13 +306,13 @@ async function buildGroupRows(group){
     CONFIG.criteria.forEach(c => critSums[c.id] = {sum:0,n:0});
     let raterCount = 0;
     allRatings.forEach(entry => {
-      const t = entry.targets && entry.targets[member.name];
+      const t = entry.targets && entry.targets[member];
       if(t){ raterCount++; CONFIG.criteria.forEach(c => { if(typeof t[c.id] === 'number'){ critSums[c.id].sum += t[c.id]; critSums[c.id].n += 1; } }); }
     });
     const critAvgs = CONFIG.criteria.map(c => critSums[c.id].n ? (critSums[c.id].sum/critSums[c.id].n).toFixed(2) : '');
     const valid = critAvgs.filter(v=>v!=='').map(Number);
     const overall = valid.length ? (valid.reduce((a,b)=>a+b,0)/valid.length).toFixed(2) : '';
-    return [member.name, ...critAvgs, overall, raterCount, submittedNames.has(member.name) ? 'Yes' : 'No'];
+    return [member, ...critAvgs, overall, raterCount, submittedNames.has(member) ? 'Yes' : 'No'];
   });
 }
 
@@ -365,57 +345,43 @@ async function onExportAllCsv(){
 }
 
 // ---------- STUDENT VIEW ----------
-let studentState = { group:null, name:null, email:null, idToken:null, scores:{} };
+let studentState = { group:null, name:null, scores:{} };
 
 function renderStudent(){
+  if(!CONFIG.groups.length){
+    studentView.innerHTML = '<div class="card"><p class="empty">Your teacher hasn\'t set up any groups yet. Check back soon.</p></div>';
+    return;
+  }
   studentView.innerHTML = `
     <div class="card">
-      <h2>Sign in to continue</h2>
-      <p class="muted">Use your ${ALLOWED_DOMAIN} Google account. This is how we know who's rating who.</p>
-      <div id="gSignInBtn"></div>
-      <p id="signInMsg" class="muted" style="margin-top:10px;"></p>
+      <h2>Who are you rating for?</h2>
+      <label>Your group</label>
+      <select id="studentGroupSelect"><option value="">Choose a group…</option>${CONFIG.groups.map(g => `<option value="${g.name}">${g.name}</option>`).join('')}</select>
+      <label>Your name</label>
+      <select id="studentNameSelect" disabled><option value="">Choose your group first…</option></select>
     </div>
     <div id="ratingFormArea"></div>
   `;
-  if(!window.google || !google.accounts || !google.accounts.id){
-    document.getElementById('signInMsg').textContent = 'Google Sign-In failed to load — check your internet connection and refresh.';
-    return;
-  }
-  google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    hd: ALLOWED_DOMAIN,
-    callback: handleCredentialResponse
-  });
-  google.accounts.id.renderButton(document.getElementById('gSignInBtn'), { theme: 'outline', size: 'large' });
-}
-
-async function handleCredentialResponse(response){
-  const msg = document.getElementById('signInMsg');
-  msg.textContent = 'Checking…';
-  try{
-    const result = await apiPost('identify', { idToken: response.credential });
-    if(result.error === 'auth_failed'){
-      msg.textContent = `That account isn't a valid ${ALLOWED_DOMAIN} account. Please sign in with your school Google account.`;
-      return;
-    }
-    if(result.error === 'not_found'){
-      msg.textContent = `Signed in as ${result.email}, but that email isn't listed in any group yet — check with your teacher.`;
-      return;
-    }
-    studentState = { group: result.group, name: result.name, email: result.email, idToken: response.credential, scores: {} };
-    document.getElementById('gSignInBtn').style.display = 'none';
-    msg.innerHTML = `<div class="signed-in-bar"><span>Signed in as <strong>${result.name}</strong> (${result.email})</span> <a onclick="location.reload()">Not you?</a></div>`;
+  const groupSel = document.getElementById('studentGroupSelect');
+  const nameSel = document.getElementById('studentNameSelect');
+  groupSel.onchange = () => {
+    const group = CONFIG.groups.find(g => g.name === groupSel.value);
+    if(group){ nameSel.disabled = false; nameSel.innerHTML = '<option value="">Choose your name…</option>' + group.members.map(m => `<option value="${m}">${m}</option>`).join(''); }
+    else{ nameSel.disabled = true; nameSel.innerHTML = '<option value="">Choose your group first…</option>'; }
+    document.getElementById('ratingFormArea').innerHTML = '';
+  };
+  nameSel.onchange = async () => {
+    if(!nameSel.value){ document.getElementById('ratingFormArea').innerHTML=''; return; }
+    studentState.group = groupSel.value; studentState.name = nameSel.value;
     await renderRatingForm();
-  }catch(e){
-    msg.textContent = 'Something went wrong verifying your sign-in. Please try again.';
-  }
+  };
 }
 
 async function renderRatingForm(){
   const area = document.getElementById('ratingFormArea');
   area.innerHTML = '<p class="muted">Loading…</p>';
   const group = CONFIG.groups.find(g => g.name === studentState.group);
-  const peers = group.members.map(m => m.name).filter(n => n !== studentState.name);
+  const peers = group.members.filter(m => m !== studentState.name);
   const targets = [studentState.name, ...peers]; // rate yourself first, then teammates
 
   const allRatings = await getRatingsForGroup(group.name);
@@ -464,7 +430,7 @@ async function renderRatingForm(){
 
 async function submitRatings(){
   const group = CONFIG.groups.find(g => g.name === studentState.group);
-  const peers = group.members.map(m => m.name).filter(n => n !== studentState.name);
+  const peers = group.members.filter(m => m !== studentState.name);
   const targets = [studentState.name, ...peers];
   for(const p of targets){
     for(const c of CONFIG.criteria){
@@ -476,11 +442,7 @@ async function submitRatings(){
     }
   }
   try{
-    const result = await apiPost('submitRating', { idToken: studentState.idToken, targets: studentState.scores });
-    if(result.error){
-      document.getElementById('submitMsg').textContent = 'Your session expired — please refresh and sign in again.';
-      return;
-    }
+    await apiPost('submitRating', {group: group.name, rater: studentState.name, targets: studentState.scores});
     document.getElementById('submitMsg').textContent = 'Submitted. Thank you!';
   }catch(e){
     document.getElementById('submitMsg').textContent = 'Something went wrong — please try again.';
@@ -494,7 +456,7 @@ async function submitRatings(){
 
   if(!apiConfigured()){
     document.querySelector('.role-tabs').style.display = 'none';
-    teacherView.innerHTML = `<div class="card"><div class="warn"><strong>Setup needed:</strong> open index.html and fill in API_URL and GOOGLE_CLIENT_ID near the top of the script. See the README for the full walkthrough.</div></div>`;
+    teacherView.innerHTML = `<div class="card"><div class="warn"><strong>Setup needed:</strong> open index.html, find the line starting with <code>const API_URL</code>, and paste in your deployed Google Apps Script Web App URL. See the README for the full walkthrough.</div></div>`;
     return;
   }
 
